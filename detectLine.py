@@ -76,7 +76,7 @@ if __name__ == "__main__":
         else:
             cv2.imwrite('line/' + pic, imgLine)
 
-        lines = cv2.HoughLines(imgLine, 1, np.pi / 180, 75)
+        lines = cv2.HoughLines(imgLine, 1, np.pi / 180, 50)
 
         if lines is not None:
             lineInfos = {}
@@ -86,16 +86,16 @@ if __name__ == "__main__":
                 rho = pair[0]
                 theta = pair[1]
 
-                a = np.cos(theta)
-                b = np.sin(theta)
-
-                x0 = a * rho
-                y0 = b * rho
-                x1 = int(x0 + 1000 * (-b))
-                y1 = int(y0 + 1000 * a)
-                x2 = int(x0 - 1000 * (-b))
-                y2 = int(y0 - 1000 * a)
-                cv2.line(imgori, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                # a = np.cos(theta)
+                # b = np.sin(theta)
+                #
+                # x0 = a * rho
+                # y0 = b * rho
+                # x1 = int(x0 + 1000 * (-b))
+                # y1 = int(y0 + 1000 * a)
+                # x2 = int(x0 - 1000 * (-b))
+                # y2 = int(y0 - 1000 * a)
+                # cv2.line(imgori, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
                 dirHasRecorded = False
                 for angle in lineInfos.keys():
@@ -105,18 +105,21 @@ if __name__ == "__main__":
                         rho = -rho
 
                     if abs(angle - theta) < 0.3:
-                        lineInfos[angle][0] = min(lineInfos[angle][0], rho)
-                        lineInfos[angle][1] = max(lineInfos[angle][1], rho)
+                        lineInfos[angle][0].append(theta)
+                        lineInfos[angle][1].append(rho)
                         dirHasRecorded = True
                         break
 
                 if dirHasRecorded:
                     continue
 
-                lineInfos[theta] = [rho, rho]
+                lineInfos[theta] = [[theta], [rho]]
 
-            for th in lineInfos.keys():
-                lineInfos[th] = (lineInfos[th][0] + lineInfos[th][1]) / 2
+            linesExracted = []
+            for lineSet in lineInfos.values():
+                th = np.average(lineSet[0])
+                rh = np.average(lineSet[1])
+                linesExracted.append([th, rh])
 
             if isD:
                 cv2.imshow('im', img2v)
@@ -126,9 +129,9 @@ if __name__ == "__main__":
                 cv2.waitKey()
 
             # one line situation
-            if len(lineInfos) == 1:
+            if len(linesExracted) == 1:
 
-                a1, r1 = lineInfos.items()[0]
+                a1, r1 = linesExracted[0]
                 # jie ju
                 if a1 == 0:
                     a1 = 0.00001
@@ -151,8 +154,8 @@ if __name__ == "__main__":
                 if 0 < y2 <= sizey:
                     edgePoints.append([sizex, int(y2)])
 
-                xb, yb = getiDevided(1.0 / lineDevideC, edgePoints)
-                xe, ye = getiDevided(1 - (1.0 / lineDevideC), edgePoints)
+                xb, yb = getiDevided(0.25, edgePoints)
+                xe, ye = getiDevided(0.75, edgePoints)
                 bIsLine = img2v[yb][xb] == 255
                 eIsLine = img2v[ye][xe] == 255
 
@@ -169,7 +172,7 @@ if __name__ == "__main__":
                         beginType = 255
                     else:
                         beginType = 0
-                    for i in range(1, lineDevideC - 1):
+                    for i in range(lineDevideC / 4, lineDevideC * 3 / 4):
                         x, y = getiDevided(float(i) / lineDevideC, edgePoints)
                         if img2v[y][x] != beginType:
                             break
@@ -183,9 +186,9 @@ if __name__ == "__main__":
                     cv2.imwrite('1/' + pic, imgori)
 
             # two lines situation
-            elif len(lineInfos) == 2:
-                a1, r1 = lineInfos.items()[0]
-                a2, r2 = lineInfos.items()[1]
+            elif len(linesExracted) == 2:
+                a1, r1 = linesExracted[0]
+                a2, r2 = linesExracted[1]
 
                 ans = np.matrix([[np.cos(a1), np.sin(a1)], [np.cos(a2), np.sin(a2)]]).I
                 # x0 y0 is the cross point of two lines
@@ -239,7 +242,7 @@ if __name__ == "__main__":
                     cv2.imwrite('2/' + pic, imgori)
 
             else:
-                print(lineInfos)
+                print(linesExracted)
                 cv2.imshow('im', img2v)
                 cv2.waitKey()
                 cv2.imshow('im', imgori)
