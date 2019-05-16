@@ -21,7 +21,9 @@ isD = False
 # 2: moving to node
 # 3: aimming at node
 # 4: leaving from node
-mode = 3
+mode = 4
+outDir = [1, 0]
+aimCount = 0
 
 path = 'pics/'
 
@@ -30,6 +32,48 @@ def getiDevided(i, twoP):
     x = twoP[0][0] * i + twoP[1][0] * (1 - i)
     y = twoP[0][1] * i + twoP[1][1] * (1 - i)
     return [int(x), int(y)]
+
+
+def exractTopoStructor(img2v, x0, y0):
+    thBegin = 0
+    for i in range(0, stepC):
+        th = i * stepSize
+        rx = int(searchR * np.cos(th) + x0)
+        ry = int(searchR * np.sin(th) + y0)
+        if img2v[ry][rx] == 0:
+            thBegin = th
+            break
+
+    ringPairs = []
+    isInRing = False
+    for i in range(1, stepC + 1):
+        th = thBegin + i * stepSize
+        rx = int(searchR * np.cos(th) + x0)
+        ry = int(searchR * np.sin(th) + y0)
+        if isInRing:
+            if img2v[ry][rx] == 0:
+                ringPairs[-1].append(th)
+                isInRing = False
+        else:
+            if img2v[ry][rx] == 255:
+                ringPairs.append([th])
+                isInRing = True
+
+    if len(ringPairs[-1]) == 1:
+        ringPairs[-1].append(thBegin + 2 * np.pi)
+
+    if ringPairs[-1][1] < ringPairs[0][1]:
+        ringPairs[-1][1] += 2 * np.pi
+
+    ringDir = []
+    for ringPair in ringPairs:
+        th = (ringPair[0] + ringPair[1]) / 2
+        rx = int(searchR * np.cos(th) + x0)
+        ry = int(searchR * np.sin(th) + y0)
+        cv2.line(imgori, (x0, y0), (rx, ry), (255, 0, 0), 3)
+        ringDir.append(th)
+
+    return ringDir
 
 
 if __name__ == "__main__":
@@ -196,45 +240,7 @@ if __name__ == "__main__":
                 y0 = int(ans[1, 0] * r1 + ans[1, 1] * r2)
 
                 if abs(x0 - sizex / 2) <= sizex / 4 and abs(y0 - sizey / 2) <= sizey / 4:
-
-                    thBegin = 0
-                    for i in range(0, stepC):
-                        th = i * stepSize
-                        rx = int(searchR * np.cos(th) + x0)
-                        ry = int(searchR * np.sin(th) + y0)
-                        if img2v[ry][rx] == 0:
-                            thBegin = th
-                            break
-
-                    ringPairs = []
-                    isInRing = False
-                    for i in range(1, stepC + 1):
-                        th = thBegin + i * stepSize
-                        rx = int(searchR * np.cos(th) + x0)
-                        ry = int(searchR * np.sin(th) + y0)
-                        if isInRing:
-                            if img2v[ry][rx] == 0:
-                                ringPairs[-1].append(th)
-                                isInRing = False
-                        else:
-                            if img2v[ry][rx] == 255:
-                                ringPairs.append([th])
-                                isInRing = True
-
-                    if len(ringPairs[-1]) == 1:
-                        ringPairs[-1].append(thBegin + 2 * np.pi)
-
-                    if ringPairs[-1][1] < ringPairs[0][1]:
-                        ringPairs[-1][1] += 2 * np.pi
-
-                    ringDir = []
-                    for ringPair in ringPairs:
-                        th = (ringPair[0] + ringPair[1]) / 2
-                        rx = int(searchR * np.cos(th) + x0)
-                        ry = int(searchR * np.sin(th) + y0)
-                        cv2.line(imgori, (x0, y0), (rx, ry), (255, 0, 0), 3)
-                        ringDir.append(th)
-
+                    rings = exractTopoStructor(img2v, x0, y0)
                     cv2.imwrite('2/' + pic, imgori)
 
                 else:
